@@ -35,7 +35,7 @@ function HomeContent() {
   const [showHistoryDialog, setShowHistoryDialog] = useState(false)
   const [showCustomModelDialog, setShowCustomModelDialog] = useState(false)
   const [prompt, setPrompt] = useState("")
-  const [model, setModel] = useState<GenerationModel>("sora_image")
+  const [model, setModel] = useState<GenerationModel>("gpt-image-1")
   const [modelType, setModelType] = useState<ModelType>(ModelType.OPENAI)
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedImages, setGeneratedImages] = useState<string[]>([])
@@ -81,8 +81,8 @@ function HomeContent() {
     const files = event.target.files
     if (files && files.length > 0) {
       Array.from(files).forEach(file => {
-        if (file.size > 4 * 1024 * 1024) {
-          setError("图片大小不能超过4MB")
+        if (file.size > 10 * 1024 * 1024) {
+          setError("图片大小不能超过10MB")
           return
         }
 
@@ -500,9 +500,9 @@ function HomeContent() {
                         <SelectValue placeholder="选择生成模型" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="gpt-image-1">GPT Image 1 模型</SelectItem>
                         <SelectItem value="sora_image">GPT Sora_Image 模型</SelectItem>
                         <SelectItem value="gpt_4o_image">GPT 4o_Image 模型</SelectItem>
-                        <SelectItem value="gpt-image-1">GPT Image 1 模型</SelectItem>
                         <SelectItem value="dall-e-3">DALL-E 3 模型</SelectItem>
                         
                         {/* 显示自定义模型 */}

@@ -45,9 +45,33 @@ const buildRequestUrl = (baseUrl: string, endpoint: string): string => {
   return `${baseUrl}${endpoint}`;
 }
 
+// 新增：获取API配置的函数，先读取本地存储，没有则读取环境变量
+const getApiConfig = () => {
+  // 先读取本地存储
+  const localConfig = storage.getApiConfig()
+  if (localConfig && localConfig.key && localConfig.baseUrl) {
+    return localConfig
+  }
+  
+  // 如果本地存储没有配置，则读取环境变量
+  const envApiKey = typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_API_KEY || (window as any).NEXT_PUBLIC_API_KEY : undefined;
+  const envBaseUrl = typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_API_BASE_URL || (window as any).NEXT_PUBLIC_API_BASE_URL : undefined;
+
+  if (envApiKey && envBaseUrl) {
+    return {
+      key: envApiKey,
+      baseUrl: envBaseUrl,
+      createdAt: new Date().toISOString()
+    }
+  }
+  
+  // 如果都没有，返回null
+  return null
+}
+
 export const api = {
   generateDalleImage: async (request: GenerateImageRequest): Promise<DalleImageResponse> => {
-    const config = storage.getApiConfig()
+    const config = getApiConfig()
     if (!config) {
       showErrorToast("请先设置 API 配置")
       throw new Error('请先设置 API 配置')
@@ -94,7 +118,7 @@ export const api = {
   },
 
   editDalleImage: async (request: GenerateImageRequest): Promise<DalleImageResponse> => {
-    const config = storage.getApiConfig()
+    const config = getApiConfig()
     if (!config) {
       showErrorToast("请先设置 API 配置")
       throw new Error('请先设置 API 配置')
@@ -177,7 +201,7 @@ export const api = {
   },
 
   generateStreamImage: async (request: GenerateImageRequest, callbacks: StreamCallback) => {
-    const config = storage.getApiConfig()
+    const config = getApiConfig()
     if (!config) {
       const error = '请先设置 API 配置'
       showErrorToast(error)
