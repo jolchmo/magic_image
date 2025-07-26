@@ -537,44 +537,4 @@ export const getAccentStateClasses = (responsive: ResponsiveState) => {
 // 响应式危险状态类名
 export const getDangerStateClasses = (responsive: ResponsiveState) => {
   return 'border-red-500 bg-red-50'
-}
-
-// 响应式成功状态类名
-export const getSuccessStateClasses = (responsive: ResponsiveState) => {
-  return 'border-green-500 bg-green-50'
-}
-
-// 响应式警告状态类名
-export const getWarningStateClasses = (responsive: ResponsiveState) => {
-  return 'border-yellow-500 bg-yellow-50'
-}
-
-// 响应式信息状态类名
-export const getInfoStateClasses = (responsive: ResponsiveState) => {
-  return 'border-blue-500 bg-blue-50'
-}
-
-// 响应式主要状态类名
-export const getPrimaryStateClasses = (responsive: ResponsiveState) => {
-  return 'border-blue-500 bg-blue-50'
-}
-
-// 响应式次要状态类名
-export const getSecondaryStateClasses = (responsive: ResponsiveState) => {
-  return 'border-gray-500 bg-gray-50'
-}
-
-// 响应式中性状态类名
-export const getNeutralStateClasses = (responsive: ResponsiveState) => {
-  return 'border-gray-300 bg-gray-50'
-}
-
-// 响应式强调状态类名
-export const getAccentStateClasses = (responsive: ResponsiveState) => {
-  return 'border-purple-500 bg-purple-50'
-}
-
-// 响应式危险状态类名
-export const getDangerStateClasses = (responsive: ResponsiveState) => {
-  return 'border-red-500 bg-red-50'
 } 
