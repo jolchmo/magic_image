@@ -8,7 +8,8 @@ import { Info, Download, Edit, Settings, History, Image as ImageIcon, MessageSqu
 import Image from "next/image"
 import { ApiKeyDialog } from "@/components/api-key-dialog"
 import { HistoryDialog } from "@/components/history-dialog"
-import { useState, useRef, useEffect, Suspense } from "react"
+import { ControlPanel } from "@/components/control-panel"
+import { useState, useRef, useEffect, Suspense, useCallback } from "react"
 import { api } from "@/lib/api"
 import { GenerationModel, AspectRatio, ImageSize, DalleImageData, ModelType } from "@/types"
 import { storage } from "@/lib/storage"
@@ -349,282 +350,11 @@ function HomeContent() {
     }
   };
 
-  // 控制面板组件
-  const ControlPanel = () => (
-    <Card className={`${isMobile ? 'w-full' : 'sticky top-4'} ${isMobile && isMobileMenuOpen ? 'block' : isMobile ? 'hidden' : 'block'}`}>
-      <CardContent className="p-4 space-y-4">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setShowApiKeyDialog(true)}
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            {!isMobile && "密钥设置"}
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setShowHistoryDialog(true)}
-          >
-            <History className="h-4 w-4 mr-2" />
-            {!isMobile && "历史记录"}
-          </Button>
-        </div>
-
-        <div className="space-y-2">
-          <h3 className="font-medium">生成模式</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <Button 
-              variant={isImageToImage ? "outline" : "secondary"} 
-              className="w-full"
-              onClick={() => setIsImageToImage(false)}
-            >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              {!isMobile && "文生图"}
-            </Button>
-            <Button 
-              variant={isImageToImage ? "secondary" : "outline"}
-              className="w-full"
-              onClick={() => setIsImageToImage(true)}
-            >
-              <ImageIcon className="h-4 w-4 mr-2" />
-              {!isMobile && "图生图"}
-            </Button>
-          </div>
-        </div>
-
-        {isImageToImage && (
-          <div className="space-y-2">
-            <h3 className="font-medium">上传图片进行编辑</h3>
-            <div 
-              className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {sourceImages.length > 0 ? (
-                <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
-                  {sourceImages.map((image, index) => (
-                    <div key={index} className="relative aspect-square w-full">
-                      <Image
-                        src={image}
-                        alt={`Source ${index + 1}`}
-                        fill
-                        className="object-contain rounded-lg"
-                      />
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveImage(index);
-                        }}
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                  ))}
-                  {sourceImages.length < 4 && (
-                    <div className="flex items-center justify-center aspect-square w-full border-2 border-dashed rounded-lg">
-                      <Upload className="h-8 w-8 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 text-gray-500">
-                  <Upload className="h-8 w-8" />
-                  <p>点击上传图片或拖拽图片到这里</p>
-                  <p className="text-xs">仅支持JPG、PNG格式，最大4MB</p>
-                  <p className="text-xs text-blue-500">可上传多张图片作为参考（最多4张）</p>
-                </div>
-              )}
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png"
-              className="hidden"
-              onChange={handleFileUpload}
-              multiple
-            />
-          </div>
-        )}
-
-        {isImageToImage && sourceImages.length > 0 && (model === 'dall-e-3' || model === 'gpt-image-1' || modelType === ModelType.DALLE) && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => {
-              setIsMaskEditorOpen(true)
-              setSelectedImage(sourceImages[0])
-            }}
-          >
-            {maskImage ? "重新编辑区域" : "编辑图片区域"}
-          </Button>
-        )}
-
-        <div className="space-y-2">
-          <h3 className="font-medium">提示词</h3>
-          <Textarea 
-            placeholder="描述你想要生成的图像，例如：一只可爱的猫咪，柔软的毛发，大眼睛，阳光下微笑..."
-            className="min-h-[120px]"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <h3 className="font-medium">模型选择</h3>
-          <div className="flex gap-2 mb-2">
-            <Select 
-              value={model} 
-              onValueChange={(value: GenerationModel) => {
-                setModel(value)
-                // 为内置模型设置对应的模型类型
-                if (value === 'dall-e-3' || value === 'gpt-image-1') {
-                  setModelType(ModelType.DALLE)
-                } else {
-                  setModelType(ModelType.OPENAI)
-                }
-              }}
-            >
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="选择生成模型" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="gpt-image-1">GPT Image 1 模型</SelectItem>
-                <SelectItem value="sora_image">GPT Sora_Image 模型</SelectItem>
-                <SelectItem value="gpt_4o_image">GPT 4o_Image 模型</SelectItem>
-                <SelectItem value="dall-e-3">DALL-E 3 模型</SelectItem>
-                
-                {/* 显示自定义模型 */}
-                {storage.getCustomModels().length > 0 && (
-                  <>
-                    <SelectItem value="divider" disabled>
-                      ──── 自定义模型 ────
-                    </SelectItem>
-                    {storage.getCustomModels().map(customModel => (
-                      <SelectItem 
-                        key={customModel.id} 
-                        value={customModel.value}
-                      >
-                        {customModel.name} ({customModel.type === ModelType.DALLE ? "DALL-E" : "OpenAI"})
-                      </SelectItem>
-                    ))}
-                  </>
-                )}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setShowCustomModelDialog(true)}
-              title="管理自定义模型"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-          <p className="text-xs text-gray-500">模型类型: {modelType === ModelType.DALLE ? 'DALL-E格式' : 'OpenAI格式'}</p>
-          <p className="text-xs text-gray-500">选择不同的AI模型可能会产生不同风格的图像结果</p>
-        </div>
-
-        {(model === 'dall-e-3' || model === 'gpt-image-1' || modelType === ModelType.DALLE) && (
-          <>
-            <div className="space-y-2">
-              <h3 className="font-medium">图片尺寸</h3>
-              <Select value={size} onValueChange={(value: ImageSize) => setSize(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="选择图片尺寸" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1024x1024">1024x1024 方形</SelectItem>
-                  <SelectItem value="1536x1024">1536x1024 横向</SelectItem>
-                  <SelectItem value="1024x1536">1024x1536 纵向</SelectItem>
-                  <SelectItem value="1792x1024">1792x1024 宽屏</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="font-medium">生成数量</h3>
-              <Select value={n.toString()} onValueChange={(value) => setN(parseInt(value))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="选择生成数量" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1张</SelectItem>
-                  <SelectItem value="2">2张</SelectItem>
-                  <SelectItem value="3">3张</SelectItem>
-                  <SelectItem value="4">4张</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {isImageToImage && (
-              <div className="space-y-2">
-                <h3 className="font-medium">图片质量</h3>
-                <Select 
-                  value={quality} 
-                  onValueChange={(value: 'auto' | 'high' | 'medium' | 'low' | 'hd' | 'standard') => setQuality(value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择图片质量" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {model === 'dall-e-3' ? (
-                      <>
-                        <SelectItem value="hd">HD 高质量</SelectItem>
-                        <SelectItem value="standard">标准质量</SelectItem>
-                        <SelectItem value="auto">自动选择</SelectItem>
-                      </>
-                    ) : model === 'gpt-image-1' ? (
-                      <>
-                        <SelectItem value="high">高质量</SelectItem>
-                        <SelectItem value="medium">中等质量</SelectItem>
-                        <SelectItem value="low">低质量</SelectItem>
-                        <SelectItem value="auto">自动选择</SelectItem>
-                      </>
-                    ) : null}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </>
-        )}
-
-        {!(model === 'dall-e-3' || model === 'gpt-image-1' || modelType === ModelType.DALLE) && (
-          <div className="space-y-2">
-            <h3 className="font-medium">图片比例</h3>
-            <Select value={aspectRatio} onValueChange={(value: AspectRatio) => setAspectRatio(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="选择图片比例" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1:1">1:1 方形</SelectItem>
-                <SelectItem value="16:9">16:9 宽屏</SelectItem>
-                <SelectItem value="9:16">9:16 竖屏</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        <Button 
-          className="w-full" 
-          onClick={handleGenerate}
-          disabled={isGenerating}
-        >
-          {isGenerating ? "生成中..." : isImageToImage ? "编辑图片" : "生成图片"}
-        </Button>
-        <Button 
-          variant="outline" 
-          className="w-full"
-          onClick={handleReset}
-        >
-          重置
-        </Button>
-      </CardContent>
-    </Card>
-  )
+  // 使用独立的控制面板组件
+  const handleMaskEditorOpen = useCallback(() => {
+    setIsMaskEditorOpen(true)
+    setSelectedImage(sourceImages[0])
+  }, [sourceImages, setIsMaskEditorOpen, setSelectedImage])
 
   return (
     <main className="min-h-screen bg-background">
@@ -640,7 +370,7 @@ function HomeContent() {
           variant="ghost"
           size="sm"
           className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full p-2"
-          onClick={() => window.open('https://github.com/HappyDongD/magic_image', '_blank')}
+          onClick={() => window.open('https://github.com/jolchmo/magic_image', '_blank')}
         >
           <Github className="h-5 w-5" />
         </Button>
@@ -686,7 +416,38 @@ function HomeContent() {
         }`}>
           {/* 左侧控制面板 */}
           <div className={`${isMobile ? 'w-full' : ''}`}>
-            <ControlPanel />
+            <ControlPanel
+              isMobile={isMobile}
+              isMobileMenuOpen={isMobileMenuOpen}
+              isImageToImage={isImageToImage}
+              sourceImages={sourceImages}
+              model={model}
+              modelType={modelType}
+              maskImage={maskImage}
+              prompt={prompt}
+              size={size}
+              n={n}
+              quality={quality}
+              aspectRatio={aspectRatio}
+              isGenerating={isGenerating}
+              fileInputRef={fileInputRef}
+              onShowApiKeyDialog={() => setShowApiKeyDialog(true)}
+              onShowHistoryDialog={() => setShowHistoryDialog(true)}
+              onShowCustomModelDialog={() => setShowCustomModelDialog(true)}
+              onIsImageToImageChange={setIsImageToImage}
+              onPromptChange={setPrompt}
+              onModelChange={setModel}
+              onModelTypeChange={setModelType}
+              onSizeChange={setSize}
+              onNChange={setN}
+              onQualityChange={setQuality}
+              onAspectRatioChange={setAspectRatio}
+              onGenerate={handleGenerate}
+              onReset={handleReset}
+              onFileUpload={handleFileUpload}
+              onRemoveImage={handleRemoveImage}
+              onMaskEditorOpen={handleMaskEditorOpen}
+            />
           </div>
 
           {/* 右侧内容区 */}
